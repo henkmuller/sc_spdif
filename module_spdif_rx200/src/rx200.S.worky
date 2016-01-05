@@ -1,0 +1,113 @@
+/*
+r0:   input port
+r1:   table
+r2:   table
+r3:   channel
+r4:   32
+r5:   bitpos
+r6:   data
+r7:   *************
+r8:   low
+r9:   high
+r10:  action/shaction
+r11:  byte
+*/
+.globl spdif_rx200    
+.globl spdif_rx200.nstackwords
+.linkset spdif_rx200.nstackwords, 10
+#define BITN(n,np1,np2) \
+n:   \
+    { lextract r11, r9, r8, r5, 8                   };\
+    { ld8u     r10, r2[r11]       ; shl r6, r6, 1   };\
+    { ld8u     r10, r1[r11]       ; add r5, r5, r10 };\
+    { shr      r10, r5, 5         ; add r6, r6, r10 };\
+    { bf       r10, np1           ; and r5, r5, r4  };\
+    { in       r9, res[r0]        ; add r8, r9, 0   };\
+    { lextract r11, r9, r8, r5, 8                   };\
+    { ld8u     r10, r2[r11]       ; shl r6, r6, 1   };\
+    { ld8u     r10, r1[r11]       ; add r5, r5, r10 };\
+    { bu np2                      ; add r6, r6, r10 };\
+
+    .issue_mode dual
+    .align 4
+spdif_rx200:
+    { dualentsp 10                 ; nop}
+    { std   r4, r5, sp[2]               }
+    { std   r6, r7, sp[4]               }
+    { std   r8, r9, sp[6]               }
+    { stw   r10, sp[8]             ; nop}
+
+    { in       r8, res[r0]        ; ldc r4, 31}
+    { in       r9, res[r0]        ; ldc r5, 0}
+    { bu violationstart}
+    
+    BITN(bit0, bit1, bit2)
+    BITN(bit1, bit2, bit3)
+    BITN(bit2, bit3, bit4)
+    BITN(bit3, bit4, bit5)
+    BITN(bit4, bit5, bit6)
+    BITN(bit5, bit6, bit7)
+    BITN(bit6, bit7, bit8)
+    BITN(bit7, bit8, bit9)
+    BITN(bit8, bit9, bit10)
+    BITN(bit9, bit10, bit11)
+    BITN(bit10, bit11, bit12)
+    BITN(bit11, bit12, bit13)
+    BITN(bit12, bit13, bit14)
+    BITN(bit13, bit14, bit15)
+    BITN(bit14, bit15, bit16)
+    BITN(bit15, bit16, bit17)
+    BITN(bit16, bit17, bit18)
+    BITN(bit17, bit18, bit19)
+    BITN(bit18, bit19, bit20)
+    BITN(bit19, bit20, bit21)
+    BITN(bit20, bit21, bit22)
+    BITN(bit21, bit22, bit23)
+    BITN(bit22, bit23, bit24)
+    BITN(bit23, bit24, bit25)
+    BITN(bit24, bit25, bit26)
+    BITN(bit25, bit26, bit27)
+    BITN(bit26, bit27, violationstart)
+bit27: 
+    { lextract r11, r9, r8, r5, 8                   };
+    { ld8u     r10, r2[r11]       ; shl r6, r6, 1   };
+    { ld8u     r10, r1[r11]       ; add r5, r5, r10 };
+    { shr      r10, r5, 5         ; add r6, r6, r10 };
+    { bf       r10, violationstart; and r5, r5, r4  };
+    { in       r9, res[r0]        ; add r8, r9, 0   };
+violationstart:
+    { lextract r11, r9, r8, r5, 8                   }
+    { ld8u     r10, r2[r11]       ; bitrev r6, r6   }
+    { ld8u     r10, r1[r11]       ; add r5, r5, r10 }
+    { shr      r10, r5, 5         ; bt r10, fail    }
+    { bf       r10, violationcontinue  ; and r5, r5, r4 }
+    { in       r9, res[r0]        ; add r8, r9, 0   }
+violationcontinue:  
+    { lextract r11, r9, r8, r5, 8                   }
+    { ld8u     r10, r2[r11]       ; sub r5, r5, 4   }
+    { ld8u     r10, r1[r11]       ; add r5, r5, r10 }
+    { shr      r10, r5, 5         ; bf r10, fail    }
+    { bf       r10, preamble      ; and r5, r5, r4  }
+    { in       r9, res[r0]        ; add r8, r9, 0   }
+preamble:  
+    { lextract r11, r9, r8, r5, 8                   }
+    { ld8u     r10, r2[r11]       ; add r5, r5, 4   }
+    { ld8u     r7, r1[r11]        ; add r5, r5, r10 }
+    { shr      r10, r5, 5         ; shl r7, r7, 1   }
+    { bf       r10, preamble2     ; and r5, r5, r4   }
+    { in       r9, res[r0]        ; add r8, r9, 0   }
+preamble2:  
+    { lextract r11, r9, r8, r5, 8                   }
+    { ld8u     r10, r2[r11]       ; out res[r3], r6  }
+    { ld8u     r10, r1[r11]       ; add r5, r5, r10 }
+    { shr      r10, r5, 5         ; add r6, r10, r7 }
+    { and r5, r5, r4              ; nop}
+    { bf       r10, bit0  }
+    { in       r9, res[r0]        ; add r8, r9, 0   }
+    bu bit0
+fail:   
+    { ldd   r4, r5, sp[2]               }
+    { ldd   r6, r7, sp[4]               }
+    { ldd   r8, r9, sp[6]               }
+    { ldw   r10, sp[8]             ; nop}
+    { retsp 10                     ; nop}
